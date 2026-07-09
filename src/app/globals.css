@@ -183,10 +183,6 @@ a {
   padding: 9px 11px 11px;
 }
 
-.featured-video-wrap {
-  margin-top: 16px;
-}
-
 .marketing-video {
   width: 100%;
   border: 1px solid var(--edge);
@@ -200,10 +196,6 @@ a {
   height: 100%;
   display: block;
   object-fit: cover;
-}
-
-.featured-video {
-  max-width: 860px;
 }
 
 .quick-motion {

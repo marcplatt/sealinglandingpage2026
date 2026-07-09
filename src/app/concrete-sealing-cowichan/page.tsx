@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { MarketingVideo } from "../../components/MarketingVideo";
 import { marketingVideos, processStripVideoIds } from "../../content/media";
 import { LeadForm } from "./LeadForm";
 import { LandingPanel, LandingSection, LandingTopBar } from "./LandingComponents";
@@ -33,8 +32,6 @@ const processVideos = processStripVideoIds.map((id) => ({
   src: marketingVideos[id].blobUrl,
   fallbackSrc: marketingVideos[id].localFallbackUrl
 }));
-
-const featuredBlobVideo = marketingVideos.concreteSealingHero;
 
 const processImages = [
   media.cleaningBefore,
@@ -189,23 +186,6 @@ export default async function ConcreteSealingCowichanPage({
               />
               <figcaption>Before and After</figcaption>
             </figure>
-          </div>
-          <div className="featured-video-wrap" aria-label={featuredBlobVideo.ariaLabel}>
-            <MarketingVideo
-              className="featured-video"
-              src={featuredBlobVideo.blobUrl}
-              fallbackSrc={featuredBlobVideo.localFallbackUrl}
-              poster={featuredBlobVideo.posterUrl}
-              title={featuredBlobVideo.title}
-              ariaLabel={featuredBlobVideo.ariaLabel}
-              autoPlay={featuredBlobVideo.autoplay}
-              muted={featuredBlobVideo.muted}
-              loop={featuredBlobVideo.loop}
-              controls={featuredBlobVideo.controls}
-              playsInline
-              preload="metadata"
-              aspectRatio="16 / 9"
-            />
           </div>
           <div className="quick-motion" aria-label="Quick motion media strip">
             <div className="quick-motion-track">
