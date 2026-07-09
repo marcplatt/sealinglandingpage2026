@@ -29,9 +29,10 @@ const media = {
   logo: "/media/logoA.png",
 };
 
-const processVideos = processStripVideoIds.map(
-  (id) => marketingVideos[id].blobUrl
-);
+const processVideos = processStripVideoIds.map((id) => ({
+  src: marketingVideos[id].blobUrl,
+  fallbackSrc: marketingVideos[id].localFallbackUrl
+}));
 
 const featuredBlobVideo = marketingVideos.concreteSealingHero;
 
@@ -45,8 +46,8 @@ const processImages = [
   media.flagstone
 ];
 
-const processStripItems = processVideos.flatMap((videoSrc, index) => [
-  { type: "video" as const, src: videoSrc },
+const processStripItems = processVideos.flatMap((video, index) => [
+  { type: "video" as const, src: video.src, fallbackSrc: video.fallbackSrc },
   { type: "image" as const, src: processImages[index % processImages.length] }
 ]);
 
@@ -193,6 +194,7 @@ export default async function ConcreteSealingCowichanPage({
             <MarketingVideo
               className="featured-video"
               src={featuredBlobVideo.blobUrl}
+              fallbackSrc={featuredBlobVideo.localFallbackUrl}
               poster={featuredBlobVideo.posterUrl}
               title={featuredBlobVideo.title}
               ariaLabel={featuredBlobVideo.ariaLabel}
@@ -211,13 +213,17 @@ export default async function ConcreteSealingCowichanPage({
                 item.type === "video" ? (
                   <video
                     key={`video-${item.src}-${index}`}
-                    src={item.src}
                     autoPlay
                     muted
                     loop
                     playsInline
                     preload="metadata"
-                  />
+                  >
+                    <source src={item.src} type="video/mp4" />
+                    {item.fallbackSrc ? (
+                      <source src={item.fallbackSrc} type="video/mp4" />
+                    ) : null}
+                  </video>
                 ) : (
                   <Image
                     key={`image-${item.src}-${index}`}

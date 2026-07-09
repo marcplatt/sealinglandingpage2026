@@ -2,6 +2,7 @@ export type MarketingVideoAsset = {
   id: string;
   title: string;
   blobUrl: string;
+  localFallbackUrl?: string;
   posterUrl?: string;
   ariaLabel: string;
   autoplay: boolean;
@@ -16,12 +17,14 @@ export type MarketingVideoAsset = {
 //
 // These are public marketing assets, so no auth headers are needed on the client.
 // Env vars are only needed if you later add server-side upload APIs.
+// Avoid signed private URLs in production because they can expire.
 export const marketingVideos = {
   concreteSealingHero: {
     id: "concrete-sealing-hero",
     title: "Concrete Sealing Process",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.private.blob.vercel-storage.com/concreteSealingProcess.mp4?vercel-blob-valid-until=1783635250033&vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfa3BjRFc3UWVwZ0JadnFEOCIsIm93bmVySWQiOiJ0ZWFtXzhjWkY5cWhETDdVRG5mYXpXdTFKcXBLSiIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgzNjc4MzY5NTc2LCJpYXQiOjE3ODM2MzUxNjk5MDF9.mVW_7VH-q3wsLlPK4MuqNXVDINA5bXgbsA2ZiXEjco0&vercel-blob-signature=PofeV8e2wsv1LM9x7qpvtnHYhkeFkJclemkun9U-Cyw",
+      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/concreteSealingProcess.mp4",
+    localFallbackUrl: "/media/concreteSealingProcess.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Concrete sealing process video",
     autoplay: true,
@@ -33,7 +36,8 @@ export const marketingVideos = {
     id: "driveway-wash",
     title: "Driveway Wash and Prep",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.private.blob.vercel-storage.com/driveway1015s.mp4?vercel-blob-valid-until=1783635257297&vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfa3BjRFc3UWVwZ0JadnFEOCIsIm93bmVySWQiOiJ0ZWFtXzhjWkY5cWhETDdVRG5mYXpXdTFKcXBLSiIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgzNjc4MzY5NTc2LCJpYXQiOjE3ODM2MzUxNjk5MDF9.mVW_7VH-q3wsLlPK4MuqNXVDINA5bXgbsA2ZiXEjco0&vercel-blob-signature=ebWpqd1G-KxH0nsgx-Ze5sCbFQC3xQxgllgfwoqBfh8",
+      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/driveway1015s.mp4",
+    localFallbackUrl: "/media/driveway1015s.mp4",
     posterUrl: "/media/driveway-before-after.jpg",
     ariaLabel: "Driveway wash and prep video",
     autoplay: true,
@@ -45,7 +49,8 @@ export const marketingVideos = {
     id: "powerwash-a",
     title: "Power Wash Clip A",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.private.blob.vercel-storage.com/powerwashA.mp4?vercel-blob-valid-until=1783635263881&vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfa3BjRFc3UWVwZ0JadnFEOCIsIm93bmVySWQiOiJ0ZWFtXzhjWkY5cWhETDdVRG5mYXpXdTFKcXBLSiIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgzNjc4MzY5NTc2LCJpYXQiOjE3ODM2MzUxNjk5MDF9.mVW_7VH-q3wsLlPK4MuqNXVDINA5bXgbsA2ZiXEjco0&vercel-blob-signature=JCP3aFIMWq2jGlDYuCKdSuheRa03jb0lYKmy9qukhw8",
+      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashA.mp4",
+    localFallbackUrl: "/media/powerwashA.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Power wash process clip A",
     autoplay: true,
@@ -57,7 +62,8 @@ export const marketingVideos = {
     id: "powerwash-driveway",
     title: "Power Wash Driveway",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.private.blob.vercel-storage.com/powerwashADriveway.mp4?vercel-blob-valid-until=1783635271529&vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfa3BjRFc3UWVwZ0JadnFEOCIsIm93bmVySWQiOiJ0ZWFtXzhjWkY5cWhETDdVRG5mYXpXdTFKcXBLSiIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgzNjc4MzY5NTc2LCJpYXQiOjE3ODM2MzUxNjk5MDF9.mVW_7VH-q3wsLlPK4MuqNXVDINA5bXgbsA2ZiXEjco0&vercel-blob-signature=Tnc78SwGIuGexlkAk35iW09k9wA54AWn_FakotX3xRA",
+      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashADriveway.mp4",
+    localFallbackUrl: "/media/powerwashADriveway.mp4",
     posterUrl: "/media/driveway-before-after.jpg",
     ariaLabel: "Power wash driveway clip",
     autoplay: true,
@@ -69,7 +75,8 @@ export const marketingVideos = {
     id: "powerwash-b",
     title: "Power Wash Clip B",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.private.blob.vercel-storage.com/powerwashB.mp4?vercel-blob-valid-until=1783635276993&vercel-blob-delegation=eyJzdG9yZUlkIjoic3RvcmVfa3BjRFc3UWVwZ0JadnFEOCIsIm93bmVySWQiOiJ0ZWFtXzhjWkY5cWhETDdVRG5mYXpXdTFKcXBLSiIsInBhdGhuYW1lIjoiKiIsIm9wZXJhdGlvbnMiOlsiZ2V0IiwiaGVhZCJdLCJ2YWxpZFVudGlsIjoxNzgzNjc4MzY5NTc2LCJpYXQiOjE3ODM2MzUxNjk5MDF9.mVW_7VH-q3wsLlPK4MuqNXVDINA5bXgbsA2ZiXEjco0&vercel-blob-signature=zgL9cAcmiYbuWE2r_-gjYLK0m6EoRHPB4TE1R677VhE",
+      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashB.mp4",
+    localFallbackUrl: "/media/powerwashB.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Power wash process clip B",
     autoplay: true,

@@ -2,6 +2,7 @@ import type { ComponentPropsWithoutRef } from "react";
 
 type MarketingVideoProps = {
   src: string;
+  fallbackSrc?: string;
   poster?: string;
   title: string;
   className?: string;
@@ -21,6 +22,7 @@ function joinClassNames(...classes: Array<string | undefined>) {
 
 export function MarketingVideo({
   src,
+  fallbackSrc,
   poster,
   title,
   className,
@@ -46,7 +48,6 @@ export function MarketingVideo({
     >
       <video
         className="marketing-video__media"
-        src={src}
         poster={poster}
         title={title}
         autoPlay={autoPlay}
@@ -56,6 +57,8 @@ export function MarketingVideo({
         playsInline={playsInline}
         preload={resolvedPreload}
       >
+        <source src={src} type="video/mp4" />
+        {fallbackSrc ? <source src={fallbackSrc} type="video/mp4" /> : null}
         Your browser does not support embedded videos. Please contact Rocket Wash
         for details and quotes.
       </video>
