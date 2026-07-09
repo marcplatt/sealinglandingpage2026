@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Tracking = {
   gclid: string;
@@ -16,6 +17,7 @@ type LeadFormProps = {
 };
 
 export function LeadForm({ tracking }: LeadFormProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">(
     "idle"
   );
@@ -44,6 +46,7 @@ export function LeadForm({ tracking }: LeadFormProps) {
 
       setStatus("success");
       form.reset();
+      router.push("/thank-you");
     } catch {
       setStatus("error");
     }
