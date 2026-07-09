@@ -23,7 +23,7 @@ export const marketingVideos = {
     id: "concrete-sealing-hero",
     title: "Concrete Sealing Process",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/concreteSealingProcess.mp4",
+      "https://kpuloe9x9gi0ekcc.public.blob.vercel-storage.com/concreteSealingProcess.mp4",
     localFallbackUrl: "/media/concreteSealingProcess.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Concrete sealing process video",
@@ -36,7 +36,7 @@ export const marketingVideos = {
     id: "driveway-wash",
     title: "Driveway Wash and Prep",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/driveway1015s.mp4",
+      "https://kpuloe9x9gi0ekcc.public.blob.vercel-storage.com/driveway1015s.mp4",
     localFallbackUrl: "/media/driveway1015s.mp4",
     posterUrl: "/media/driveway-before-after.jpg",
     ariaLabel: "Driveway wash and prep video",
@@ -49,7 +49,7 @@ export const marketingVideos = {
     id: "powerwash-a",
     title: "Power Wash Clip A",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashA.mp4",
+      "https://kpuloe9x9gi0ekcc.public.blob.vercel-storage.com/powerwashA.mp4",
     localFallbackUrl: "/media/powerwashA.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Power wash process clip A",
@@ -62,7 +62,7 @@ export const marketingVideos = {
     id: "powerwash-driveway",
     title: "Power Wash Driveway",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashADriveway.mp4",
+      "https://kpuloe9x9gi0ekcc.public.blob.vercel-storage.com/powerwashADriveway.mp4",
     localFallbackUrl: "/media/powerwashADriveway.mp4",
     posterUrl: "/media/driveway-before-after.jpg",
     ariaLabel: "Power wash driveway clip",
@@ -75,7 +75,7 @@ export const marketingVideos = {
     id: "powerwash-b",
     title: "Power Wash Clip B",
     blobUrl:
-      "https://kpcdw7qepgbzvqd8.public.blob.vercel-storage.com/powerwashB.mp4",
+      "https://kpuloe9x9gi0ekcc.public.blob.vercel-storage.com/powerwashB.mp4",
     localFallbackUrl: "/media/powerwashB.mp4",
     posterUrl: "/media/stamped-concrete.avif",
     ariaLabel: "Power wash process clip B",
