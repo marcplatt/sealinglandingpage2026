@@ -90,7 +90,9 @@ export default async function ConcreteSealingCowichanPage({
   };
 
   return (
-    <main id="top" className="lp-shell">
+    <>
+      <link rel="stylesheet" href="/site.css" />
+      <main id="top" className="lp-shell">
       <LandingTopBar
         phoneDisplay={phoneDisplay}
         phoneHref={phoneHref}
@@ -366,9 +368,10 @@ export default async function ConcreteSealingCowichanPage({
         </div>
       </footer>
 
-      <a className="sticky-call" href={phoneHref}>
-        Tap to Call {phoneDisplay}
-      </a>
-    </main>
+        <a className="sticky-call" href={phoneHref}>
+          Tap to Call {phoneDisplay}
+        </a>
+      </main>
+    </>
   );
 }
