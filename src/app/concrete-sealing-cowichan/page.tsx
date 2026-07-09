@@ -10,6 +10,10 @@ type PageProps = {
 const phoneDisplay = "250.743.6349";
 const phoneHref = "tel:+12507436349";
 
+function resolvePublicMedia(envName: string, fallback: string) {
+  return process.env[envName] ?? fallback;
+}
+
 const media = {
   hero: "/media/stamped-concrete.avif",
   stamped: "/media/stamped-concrete_edited.jpg",
@@ -25,11 +29,26 @@ const media = {
     "https://static.wixstatic.com/media/0abc9f_19b2bcdfdf8d4cdfa69c165a8999e6d1~mv2.png/v1/fill/w_147,h_196,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/LADYSMITH.png",
   zensurance: "/media/zensurance_edited.jpg",
   logo: "/media/rocket-wash-logo.png",
-  motionA: "/media/driveway-10-15s.mp4",
-  motionB: "/media/concrete-sealing-process.mp4",
-  motionC: "/media/powerwash-bob-armstrong-driveway.mp4",
-  motionD: "/media/powerwash-bob-armstrong.mp4",
-  motionE: "/media/powerwash-debbie-guthrie.mp4"
+  motionA: resolvePublicMedia(
+    "NEXT_PUBLIC_MOTION_A_URL",
+    "/media/driveway-10-15s.mp4"
+  ),
+  motionB: resolvePublicMedia(
+    "NEXT_PUBLIC_MOTION_B_URL",
+    "/media/concrete-sealing-process.mp4"
+  ),
+  motionC: resolvePublicMedia(
+    "NEXT_PUBLIC_MOTION_C_URL",
+    "/media/powerwash-bob-armstrong-driveway.mp4"
+  ),
+  motionD: resolvePublicMedia(
+    "NEXT_PUBLIC_MOTION_D_URL",
+    "/media/powerwash-bob-armstrong.mp4"
+  ),
+  motionE: resolvePublicMedia(
+    "NEXT_PUBLIC_MOTION_E_URL",
+    "/media/powerwash-debbie-guthrie.mp4"
+  )
 };
 
 const processVideos = [
