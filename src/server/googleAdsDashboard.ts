@@ -1,5 +1,6 @@
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GOOGLE_ADS_API_BASE = "https://googleads.googleapis.com/v20";
+const GOOGLE_ADS_API_BASE = "https://googleads.googleapis.com";
+const GOOGLE_ADS_API_VERSIONS = ["v22", "v21"] as const;
 
 export type LiveCampaign = {
   id: string;
@@ -141,25 +142,32 @@ async function gaqlSearch(
   accessToken: string,
   query: string
 ): Promise<GoogleAdsRow[]> {
-  const endpoint = `${GOOGLE_ADS_API_BASE}/customers/${env.customerId}/googleAds:searchStream`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "developer-token": env.developerToken,
-      "login-customer-id": env.loginCustomerId,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query })
-  });
+  let lastError = "";
 
-  if (!response.ok) {
-    const bodyText = await response.text();
-    throw new Error(`Google Ads query failed: ${response.status} ${bodyText.slice(0, 240)}`);
+  for (const version of GOOGLE_ADS_API_VERSIONS) {
+    const endpoint = `${GOOGLE_ADS_API_BASE}/${version}/customers/${env.customerId}/googleAds:searchStream`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "developer-token": env.developerToken,
+        "login-customer-id": env.loginCustomerId,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text();
+      lastError = `${version} ${response.status} ${bodyText.slice(0, 240)}`;
+      continue;
+    }
+
+    const chunks = (await response.json()) as Array<{ results?: GoogleAdsRow[] }>;
+    return chunks.flatMap((chunk) => chunk.results ?? []);
   }
 
-  const chunks = (await response.json()) as Array<{ results?: GoogleAdsRow[] }>;
-  return chunks.flatMap((chunk) => chunk.results ?? []);
+  throw new Error(`Google Ads query failed for all versions: ${lastError}`);
 }
 
 function toCurrencyFromMicros(value: string | undefined): number {
