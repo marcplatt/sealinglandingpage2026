@@ -58,6 +58,9 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div className={styles.heroActions}>
+          <Link className="btn btn-outline" href="/crm">
+            Open CRM
+          </Link>
           <Link className="btn btn-outline" href="/concrete-sealing-cowichan">
             Open Landing Page
           </Link>

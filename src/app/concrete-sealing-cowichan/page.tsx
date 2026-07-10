@@ -3,6 +3,7 @@ import Image from "next/image";
 import { marketingVideos, processStripVideoIds } from "../../content/media";
 import { LeadForm } from "./LeadForm";
 import { LandingPanel, LandingSection, LandingTopBar } from "./LandingComponents";
+import type { TrackingPayload } from "../../types/crm";
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -71,13 +72,20 @@ export default async function ConcreteSealingCowichanPage({
 }: PageProps) {
   const params = await searchParams;
 
-  const tracking = {
+  const tracking: Partial<TrackingPayload> = {
     gclid: getParam(params.gclid),
+    gbraid: getParam(params.gbraid),
+    wbraid: getParam(params.wbraid),
+    msclkid: getParam(params.msclkid),
+    fbclid: getParam(params.fbclid),
     utm_source: getParam(params.utm_source),
     utm_medium: getParam(params.utm_medium),
     utm_campaign: getParam(params.utm_campaign),
     utm_term: getParam(params.utm_term),
-    utm_content: getParam(params.utm_content)
+    utm_content: getParam(params.utm_content),
+    utm_id: getParam(params.utm_id),
+    page_variant_id: getParam(params.pv) || getParam(params.page_variant),
+    form_variant_id: getParam(params.fv) || getParam(params.form_variant)
   };
 
   return (

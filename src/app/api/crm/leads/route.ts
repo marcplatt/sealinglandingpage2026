@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { createLeadFromSubmission } from "../../../server/crmStore";
+import { createLeadFromSubmission, getCrmLeads } from "../../../../server/crmStore";
+
+export async function GET() {
+  const leads = await getCrmLeads();
+  return NextResponse.json({ leads });
+}
 
 export async function POST(request: Request) {
   const body = (await request.json()) as Record<string, unknown>;
@@ -16,6 +21,5 @@ export async function POST(request: Request) {
   }
 
   const lead = await createLeadFromSubmission(body);
-
-  return NextResponse.json({ ok: true, leadId: lead.id });
+  return NextResponse.json({ ok: true, lead });
 }
