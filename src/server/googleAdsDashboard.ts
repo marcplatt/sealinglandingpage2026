@@ -1,8 +1,5 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import path from "node:path";
-
-const execFileAsync = promisify(execFile);
+const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_ADS_API_BASE = "https://googleads.googleapis.com/v20";
 
 export type LiveCampaign = {
   id: string;
@@ -32,24 +29,272 @@ export type DashboardData = {
 
 const DEFAULT_CAMPAIGN_ID = "24014313278";
 
-function parseScriptOutput(stdout: string): DashboardData | null {
-  const lines = stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+type GoogleAdsEnv = {
+  developerToken: string;
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  loginCustomerId: string;
+  customerId: string;
+};
 
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    try {
-      const data = JSON.parse(lines[i]) as DashboardData;
-      if (Array.isArray(data.campaigns) && Array.isArray(data.recommendations)) {
-        return data;
-      }
-    } catch {
+type GoogleAdsRow = {
+  campaign?: {
+    id?: string;
+    name?: string;
+    status?: string;
+  };
+  metrics?: {
+    costMicros?: string;
+    conversions?: number;
+    conversionsValue?: number;
+    clicks?: string;
+    impressions?: string;
+  };
+  searchTermView?: {
+    searchTerm?: string;
+  };
+  recommendation?: {
+    resourceName?: string;
+    type?: string;
+    dismissed?: boolean;
+    impact?: {
+      baseMetrics?: {
+        costMicros?: string;
+      };
+      potentialMetrics?: {
+        costMicros?: string;
+      };
+    };
+  };
+};
+
+function getGoogleAdsEnv(): GoogleAdsEnv | null {
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+  const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
+  const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
+  const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
+
+  if (
+    !developerToken ||
+    !clientId ||
+    !clientSecret ||
+    !refreshToken ||
+    !loginCustomerId ||
+    !customerId
+  ) {
+    return null;
+  }
+
+  return {
+    developerToken,
+    clientId,
+    clientSecret,
+    refreshToken,
+    loginCustomerId,
+    customerId
+  };
+}
+
+async function getAccessToken(env: GoogleAdsEnv): Promise<string> {
+  const body = new URLSearchParams({
+    client_id: env.clientId,
+    client_secret: env.clientSecret,
+    refresh_token: env.refreshToken,
+    grant_type: "refresh_token"
+  });
+
+  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw new Error(`OAuth token request failed: ${response.status}`);
+  }
+
+  const json = (await response.json()) as { access_token?: string };
+  if (!json.access_token) {
+    throw new Error("OAuth token response missing access_token");
+  }
+
+  return json.access_token;
+}
+
+async function gaqlSearch(
+  env: GoogleAdsEnv,
+  accessToken: string,
+  query: string
+): Promise<GoogleAdsRow[]> {
+  const endpoint = `${GOOGLE_ADS_API_BASE}/customers/${env.customerId}/googleAds:searchStream`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "developer-token": env.developerToken,
+      "login-customer-id": env.loginCustomerId,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ query })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Ads query failed: ${response.status}`);
+  }
+
+  const chunks = (await response.json()) as Array<{ results?: GoogleAdsRow[] }>;
+  return chunks.flatMap((chunk) => chunk.results ?? []);
+}
+
+function toCurrencyFromMicros(value: string | undefined): number {
+  const micros = Number(value ?? "0");
+  return Number.isFinite(micros) ? micros / 1_000_000 : 0;
+}
+
+function buildFallbackTargetCampaign(campaignId: string): LiveCampaign {
+  return {
+    id: campaignId,
+    name: "Concrete Sealing Cowichan",
+    status: "UNKNOWN",
+    spend: 0,
+    revenue: 0,
+    conversions: 0
+  };
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+async function fetchCampaigns(env: GoogleAdsEnv, accessToken: string): Promise<LiveCampaign[]> {
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM campaign
+    WHERE campaign.status != REMOVED
+      AND campaign.advertising_channel_type = SEARCH
+      AND campaign.name LIKE '%Cowichan%'
+      AND segments.date DURING LAST_30_DAYS
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 20
+  `;
+
+  const rows = await gaqlSearch(env, accessToken, query);
+  return rows.map((row) => ({
+    id: row.campaign?.id ?? "",
+    name: row.campaign?.name ?? "Unknown campaign",
+    status: row.campaign?.status ?? "UNKNOWN",
+    spend: toCurrencyFromMicros(row.metrics?.costMicros),
+    revenue: Number(row.metrics?.conversionsValue ?? 0),
+    conversions: Number(row.metrics?.conversions ?? 0)
+  }));
+}
+
+async function fetchSearchTermRecommendations(
+  env: GoogleAdsEnv,
+  accessToken: string,
+  campaignId: string
+): Promise<LiveRecommendation[]> {
+  const query = `
+    SELECT
+      search_term_view.search_term,
+      metrics.cost_micros,
+      metrics.clicks,
+      metrics.conversions,
+      metrics.impressions
+    FROM search_term_view
+    WHERE campaign.id = ${campaignId}
+      AND segments.date DURING LAST_30_DAYS
+      AND metrics.cost_micros > 0
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 80
+  `;
+
+  const rows = await gaqlSearch(env, accessToken, query);
+  const recommendations: LiveRecommendation[] = [];
+
+  for (const row of rows) {
+    const conversions = Number(row.metrics?.conversions ?? 0);
+    const clicks = Number(row.metrics?.clicks ?? 0);
+    if (conversions > 0 || clicks < 2) {
       continue;
+    }
+
+    const term = row.searchTermView?.searchTerm?.trim();
+    if (!term) {
+      continue;
+    }
+
+    const spend = toCurrencyFromMicros(row.metrics?.costMicros);
+    recommendations.push({
+      id: `neg-${Math.abs(
+        [...term].reduce((acc, char) => ((acc * 31 + char.charCodeAt(0)) | 0) >>> 0, 0)
+      )}`,
+      title: `Add negative keyword: ${term}`,
+      reason: `Search term has ${clicks} clicks, ${Number(
+        row.metrics?.impressions ?? 0
+      )} impressions, and no conversions in the last 30 days.`,
+      action: "Add as campaign-level negative keyword and monitor cost shift.",
+      dollarsRecoverable: Number(spend.toFixed(2))
+    });
+
+    if (recommendations.length >= 10) {
+      break;
     }
   }
 
-  return null;
+  return recommendations;
+}
+
+async function fetchGoogleRecommendations(
+  env: GoogleAdsEnv,
+  accessToken: string,
+  campaignId: string
+): Promise<LiveRecommendation[]> {
+  const query = `
+    SELECT
+      recommendation.resource_name,
+      recommendation.type,
+      recommendation.impact,
+      recommendation.dismissed
+    FROM recommendation
+    WHERE recommendation.campaign = 'customers/${env.customerId}/campaigns/${campaignId}'
+      AND recommendation.dismissed = FALSE
+    LIMIT 15
+  `;
+
+  const rows = await gaqlSearch(env, accessToken, query);
+  return rows.map((row) => {
+    const baseMicros = Number(row.recommendation?.impact?.baseMetrics?.costMicros ?? "0");
+    const potentialMicros = Number(
+      row.recommendation?.impact?.potentialMetrics?.costMicros ?? "0"
+    );
+    const recoverable = Math.max(0, (baseMicros - potentialMicros) / 1_000_000);
+    const typeName = toTitleCase(row.recommendation?.type ?? "RECOMMENDATION");
+
+    return {
+      id: row.recommendation?.resourceName?.replaceAll("/", "-") ?? `rec-${typeName}`,
+      title: `Apply recommendation: ${typeName}`,
+      reason: "Google Ads generated this recommendation for campaign optimization.",
+      action: "Review and apply only after checking expected impact against lead quality.",
+      dollarsRecoverable: Number(recoverable.toFixed(2))
+    };
+  });
 }
 
 function fallbackDashboardData(campaignId: string): DashboardData {
@@ -91,25 +336,32 @@ export async function getGoogleAdsDashboardData(
   campaignId: string = DEFAULT_CAMPAIGN_ID
 ): Promise<DashboardData> {
   try {
-    const repoRoot = path.resolve(process.cwd(), "..");
-    const pythonExe = path.join(repoRoot, ".venv", "Scripts", "python.exe");
-    const scriptPath = path.join(
-      repoRoot,
-      "google-ads-api-setup",
-      "dashboard_concrete_sealing_snapshot.py"
-    );
-
-    const { stdout } = await execFileAsync(pythonExe, [
-      scriptPath,
-      "--campaign-id",
-      campaignId
-    ]);
-
-    const parsed = parseScriptOutput(stdout);
-    if (!parsed) {
+    const env = getGoogleAdsEnv();
+    if (!env) {
       return fallbackDashboardData(campaignId);
     }
-    return parsed;
+
+    const accessToken = await getAccessToken(env);
+    const campaigns = await fetchCampaigns(env, accessToken);
+    const targetCampaign =
+      campaigns.find((campaign) => campaign.id === campaignId) ??
+      buildFallbackTargetCampaign(campaignId);
+
+    let recommendations = await fetchSearchTermRecommendations(env, accessToken, campaignId);
+    if (recommendations.length === 0) {
+      recommendations = await fetchGoogleRecommendations(env, accessToken, campaignId);
+    }
+
+    return {
+      source: "google-ads-live",
+      customerId: env.customerId,
+      campaignId,
+      targetCampaign,
+      campaigns,
+      recommendations: recommendations.sort(
+        (a, b) => b.dollarsRecoverable - a.dollarsRecoverable
+      )
+    };
   } catch {
     return fallbackDashboardData(campaignId);
   }
