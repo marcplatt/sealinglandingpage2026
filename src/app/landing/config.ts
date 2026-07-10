@@ -158,10 +158,10 @@ export const landingPageConfigs: LandingPageConfig[] = [
     routeLabel: "Stamped Concrete Sealing Cowichan",
     title: "Stamped Concrete Sealing Cowichan | Rocket Wash",
     description:
-      "Stamped Concrete Sealing Cowichan service page for decorative patios, pool decks, and driveways.",
+      "Stamped Concrete Sealing Cowichan service page for stamped concrete cleaning, sealing, patios, pool decks, and driveways.",
     heroTitle: "Stamped Concrete Sealing Cowichan",
     heroSubhead:
-      "We restore and seal stamped concrete so decorative colour and pattern stay sharper while the surface resists wear, moisture, and fading.",
+      "Need stamped concrete cleaning and sealing near me? We restore and seal stamped concrete so decorative colour and pattern stay sharper while the surface resists wear, moisture, and fading.",
     cleaningTitle: "Stamped Surface Cleaning",
     cleaningBody:
       "Stamped concrete collects dirt in its pattern and low spots. We prep the surface to clean it out before sealing.",
@@ -294,11 +294,11 @@ export const landingPageConfigs: LandingPageConfig[] = [
     routeLabel: "Paver Cleaning And Sealing Cowichan",
     title: "Paver Cleaning And Sealing Cowichan | Rocket Wash",
     description:
-      "Paver Cleaning and Sealing Cowichan service page for patios, walkways, and interlock hardscapes.",
+      "Paver Cleaning and Sealing Cowichan service page for paver cleaning, patios, walkways, and interlock hardscapes.",
     heroTitle: "Paver Cleaning And Sealing Cowichan",
     heroSubhead:
-      "We clean, restore, and seal pavers so patios and walkways look sharper, keep their joint structure better, and resist moss and staining.",
-    cleaningTitle: "Paver Surface Cleaning",
+      "Looking for paver cleaning near me? We clean, restore, and seal pavers so patios and walkways look sharper, keep their joint structure better, and resist moss and staining.",
+    cleaningTitle: "Paver Cleaning Near Me And Surface Prep",
     cleaningBody:
       "We remove buildup from the face and joints of pavers before re-sanding and sealing the hardscape.",
     cleaningBullets: [

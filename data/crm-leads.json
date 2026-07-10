@@ -1,0 +1,36 @@
+{
+  "leads": [
+    {
+      "id": "lead_48ea2994-02f0-4a6b-98ab-0b2758c01662",
+      "createdAt": "2026-07-10T18:55:06.568Z",
+      "updatedAt": "2026-07-10T18:55:06.568Z",
+      "stage": "new_lead",
+      "firstName": "Test",
+      "lastName": "Lead",
+      "email": "test_1783709706419@example.com",
+      "phone": "2500000000",
+      "address": "Cowichan",
+      "serviceDetails": "verification submit",
+      "serviceAreaBucket": "",
+      "valueTierPrediction": "",
+      "intentServiceType": "concrete_sealing",
+      "tracking": {},
+      "offline": {
+        "contactedAt": "",
+        "qualifiedAt": "",
+        "estimateSentAt": "",
+        "wonAt": "",
+        "lostAt": "",
+        "quoteAmountCad": null,
+        "finalRevenueCad": null,
+        "jobCostCad": null,
+        "closeReason": "",
+        "lossReason": "",
+        "notes": "",
+        "uploadReady": false,
+        "offlineConversionUploaded": false,
+        "offlineConversionAt": ""
+      }
+    }
+  ]
+}
