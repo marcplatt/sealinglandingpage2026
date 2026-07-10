@@ -25,6 +25,11 @@ export type DashboardData = {
   targetCampaign?: LiveCampaign;
   campaigns: LiveCampaign[];
   recommendations: LiveRecommendation[];
+  debug?: {
+    stage: string;
+    reason: string;
+    missingEnv?: string[];
+  };
 };
 
 const DEFAULT_CAMPAIGN_ID = "24014313278";
@@ -70,12 +75,14 @@ type GoogleAdsRow = {
 };
 
 function getGoogleAdsEnv(): GoogleAdsEnv | null {
+  const normalizeAdsId = (value: string | undefined) => (value ?? "").replace(/\D/g, "");
+
   const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
-  const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
-  const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
+  const loginCustomerId = normalizeAdsId(process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID);
+  const customerId = normalizeAdsId(process.env.GOOGLE_ADS_CUSTOMER_ID);
 
   if (
     !developerToken ||
@@ -115,7 +122,10 @@ async function getAccessToken(env: GoogleAdsEnv): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`OAuth token request failed: ${response.status}`);
+    const bodyText = await response.text();
+    throw new Error(
+      `OAuth token request failed: ${response.status} ${bodyText.slice(0, 240)}`
+    );
   }
 
   const json = (await response.json()) as { access_token?: string };
@@ -144,7 +154,8 @@ async function gaqlSearch(
   });
 
   if (!response.ok) {
-    throw new Error(`Google Ads query failed: ${response.status}`);
+    const bodyText = await response.text();
+    throw new Error(`Google Ads query failed: ${response.status} ${bodyText.slice(0, 240)}`);
   }
 
   const chunks = (await response.json()) as Array<{ results?: GoogleAdsRow[] }>;
@@ -297,7 +308,10 @@ async function fetchGoogleRecommendations(
   });
 }
 
-function fallbackDashboardData(campaignId: string): DashboardData {
+function fallbackDashboardData(
+  campaignId: string,
+  debug?: DashboardData["debug"]
+): DashboardData {
   return {
     source: "fallback",
     campaignId,
@@ -328,7 +342,8 @@ function fallbackDashboardData(campaignId: string): DashboardData {
         action: "Move best exact-match terms into a dedicated ad group with focused RSA copy.",
         dollarsRecoverable: 900
       }
-    ]
+    ],
+    debug
   };
 }
 
@@ -338,7 +353,27 @@ export async function getGoogleAdsDashboardData(
   try {
     const env = getGoogleAdsEnv();
     if (!env) {
-      return fallbackDashboardData(campaignId);
+      const requiredVars = [
+        "GOOGLE_ADS_DEVELOPER_TOKEN",
+        "GOOGLE_ADS_CLIENT_ID",
+        "GOOGLE_ADS_CLIENT_SECRET",
+        "GOOGLE_ADS_REFRESH_TOKEN",
+        "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+        "GOOGLE_ADS_CUSTOMER_ID"
+      ];
+
+      const missingEnv = requiredVars.filter((key) => {
+        if (key.includes("CUSTOMER_ID")) {
+          return !(process.env[key] ?? "").replace(/\D/g, "");
+        }
+        return !process.env[key];
+      });
+
+      return fallbackDashboardData(campaignId, {
+        stage: "env",
+        reason: "Missing required Google Ads environment variables.",
+        missingEnv
+      });
     }
 
     const accessToken = await getAccessToken(env);
@@ -360,9 +395,17 @@ export async function getGoogleAdsDashboardData(
       campaigns,
       recommendations: recommendations.sort(
         (a, b) => b.dollarsRecoverable - a.dollarsRecoverable
-      )
+      ),
+      debug: {
+        stage: "ok",
+        reason: "Live Google Ads data loaded."
+      }
     };
-  } catch {
-    return fallbackDashboardData(campaignId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Unknown error";
+    return fallbackDashboardData(campaignId, {
+      stage: "google-ads-api",
+      reason
+    });
   }
 }

@@ -56,6 +56,14 @@ export default async function DashboardPage() {
           <p className={styles.dataTag}>
             Data source: {dashboard.source === "google-ads-live" ? "Google Ads Live" : "Fallback"}
           </p>
+          {dashboard.source === "fallback" && dashboard.debug ? (
+            <p className={styles.dataTag}>
+              Fallback reason: {dashboard.debug.stage} - {dashboard.debug.reason}
+              {dashboard.debug.missingEnv && dashboard.debug.missingEnv.length > 0
+                ? ` Missing: ${dashboard.debug.missingEnv.join(", ")}`
+                : ""}
+            </p>
+          ) : null}
         </div>
         <div className={styles.heroActions}>
           <Link className="btn btn-outline" href="/crm">
