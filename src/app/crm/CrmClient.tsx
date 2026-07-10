@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   PIPELINE_STAGE_LABELS,
@@ -117,6 +117,10 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       setSummary(summaryResult.summary);
     }
   }
+
+  useEffect(() => {
+    void refreshData();
+  }, []);
 
   function onClickImport() {
     fileInputRef.current?.click();
