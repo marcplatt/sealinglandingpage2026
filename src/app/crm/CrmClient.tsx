@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 
 import {
@@ -252,9 +253,9 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       </div>
 
       <div className={styles.actionRow}>
-        <a className="btn btn-outline" href="/api/crm/export">
+        <Link className="btn btn-outline" href="/api/crm/export">
           Export CSV
-        </a>
+        </Link>
         <button className="btn btn-outline" type="button" onClick={onClickImport}>
           Import CSV
         </button>
