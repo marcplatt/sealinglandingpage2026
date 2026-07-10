@@ -3,15 +3,13 @@ import { NextResponse } from "next/server";
 import { updateCrmLead } from "../../../../../server/crmStore";
 import type { CrmLeadUpdatePayload } from "../../../../../types/crm";
 
-type RouteContext = {
-  params: {
-    leadId: string;
-  };
-};
-
-export async function PATCH(request: Request, context: RouteContext) {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ leadId: string }> }
+) {
+  const { leadId } = await context.params;
   const body = (await request.json()) as CrmLeadUpdatePayload;
-  const lead = await updateCrmLead(context.params.leadId, body);
+  const lead = await updateCrmLead(leadId, body);
 
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
