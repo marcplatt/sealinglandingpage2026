@@ -63,7 +63,11 @@ const CSV_COLUMNS = [
   "submitted_at_utc"
 ] as const;
 
-const dataDir = path.join(process.cwd(), "data");
+const dataDir = process.env.CRM_DATA_DIR
+  ? path.resolve(process.env.CRM_DATA_DIR)
+  : process.env.VERCEL
+    ? path.join("/tmp", "rocketwash-crm")
+    : path.join(process.cwd(), "data");
 const storePath = path.join(dataDir, "crm-leads.json");
 
 const TRACKING_FIELDS: Array<keyof TrackingPayload> = [

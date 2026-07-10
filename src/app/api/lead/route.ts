@@ -15,7 +15,18 @@ export async function POST(request: Request) {
     }
   }
 
-  const lead = await createLeadFromSubmission(body);
+  try {
+    const lead = await createLeadFromSubmission(body);
 
-  return NextResponse.json({ ok: true, leadId: lead.id });
+    return NextResponse.json({ ok: true, leadId: lead.id });
+  } catch (error) {
+    console.error("Lead submission failed", error);
+    return NextResponse.json(
+      {
+        error: "Lead submission failed",
+        message: "Unable to save lead data"
+      },
+      { status: 500 }
+    );
+  }
 }
