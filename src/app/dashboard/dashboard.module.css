@@ -1,0 +1,268 @@
+.pageShell {
+  width: min(1200px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 36px 0 84px;
+  display: grid;
+  gap: 22px;
+}
+
+.hero {
+  border: 1px solid #d7cdbf;
+  border-radius: 18px;
+  padding: clamp(20px, 4vw, 34px);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(194 75 26 / 0.18), transparent 45%),
+    linear-gradient(135deg, #fff5ea 0%, #ffffff 62%);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: #7f3113;
+  font-weight: 700;
+}
+
+.hero h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  letter-spacing: -0.02em;
+}
+
+.heroCopy {
+  margin: 0;
+  max-width: 56ch;
+  color: #564f48;
+}
+
+.dataTag {
+  margin: 11px 0 0;
+  display: inline-flex;
+  border: 1px solid #d8c9b7;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: #6b4b39;
+  background: #fffaf4;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.statCard {
+  border: 1px solid #ddd7cf;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px 16px 14px;
+}
+
+.statCard p {
+  margin: 0;
+  color: #5f5750;
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statCard strong {
+  margin-top: 6px;
+  display: inline-block;
+  font-size: clamp(1.3rem, 2vw, 1.85rem);
+}
+
+.block {
+  border: 1px solid #ddd7cf;
+  border-radius: 16px;
+  background: #fff;
+  padding: 18px;
+}
+
+.blockHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.blockHeader h2 {
+  margin: 0;
+}
+
+.blockHeader p {
+  margin: 0;
+  color: #665e56;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.roasTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.roasTable thead {
+  background: #fbf7f2;
+}
+
+.roasTable th,
+.roasTable td {
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid #efe8df;
+  white-space: nowrap;
+}
+
+.roasTable th {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #655e57;
+}
+
+.roasTable td:first-child,
+.roasTable th:first-child {
+  white-space: normal;
+}
+
+.recommendationList {
+  display: grid;
+  gap: 12px;
+}
+
+.recommendationCard {
+  border: 1px solid #ebdfd2;
+  border-radius: 14px;
+  background: #fffcf8;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.recommendationMeta {
+  text-align: center;
+  min-width: 86px;
+}
+
+.rank {
+  margin: 0;
+  font-size: 1.16rem;
+  font-weight: 800;
+  color: #3e3124;
+}
+
+.recoverable {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #6e5a47;
+}
+
+.recommendationBody h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.recommendationBody p {
+  margin: 6px 0 0;
+  color: #544e47;
+}
+
+.campaignName {
+  font-weight: 700;
+  color: #3a3128;
+}
+
+.actionLine {
+  font-size: 0.95rem;
+}
+
+.recommendationCta {
+  display: flex;
+  align-items: center;
+}
+
+.sendButton {
+  border: 1px solid #c24b1a;
+  color: #fff;
+  background: #c24b1a;
+  border-radius: 10px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.sendButton:hover {
+  background: #983815;
+  border-color: #983815;
+}
+
+@media (max-width: 940px) {
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recommendationCard {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .recommendationMeta {
+    text-align: left;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .recommendationCta {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .pageShell {
+    width: calc(100vw - 24px);
+    padding: 22px 0 70px;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+
+  .heroActions {
+    width: 100%;
+  }
+
+  .heroActions :global(.btn) {
+    width: 100%;
+  }
+
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sendButton {
+    width: 100%;
+  }
+}
