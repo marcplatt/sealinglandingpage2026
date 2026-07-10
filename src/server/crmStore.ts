@@ -21,6 +21,40 @@ type CsvImportResult = {
   skipped: number;
 };
 
+export type CrmStorageHealth = {
+  mode: "blob" | "file";
+  blobConfigured: boolean;
+  blobSdkAvailable: boolean;
+  isVercelRuntime: boolean;
+  blobPath: string;
+  filePath: string;
+};
+
+type BlobListItem = {
+  url: string;
+  pathname: string;
+  uploadedAt?: string;
+};
+
+type BlobSdk = {
+  list: (options: {
+    prefix?: string;
+    token?: string;
+    limit?: number;
+  }) => Promise<{ blobs: BlobListItem[] }>;
+  put: (
+    pathname: string,
+    body: string,
+    options: {
+      access: "public" | "private";
+      addRandomSuffix?: boolean;
+      allowOverwrite?: boolean;
+      contentType?: string;
+      token?: string;
+    }
+  ) => Promise<unknown>;
+};
+
 const CSV_COLUMNS = [
   "id",
   "createdAt",
@@ -69,6 +103,7 @@ const dataDir = process.env.CRM_DATA_DIR
     ? path.join("/tmp", "rocketwash-crm")
     : path.join(process.cwd(), "data");
 const storePath = path.join(dataDir, "crm-leads.json");
+const blobStorePath = process.env.CRM_BLOB_PATH || "crm/crm-leads.json";
 
 const TRACKING_FIELDS: Array<keyof TrackingPayload> = [
   "gclid",
@@ -109,6 +144,108 @@ const TRACKING_FIELDS: Array<keyof TrackingPayload> = [
 
 function emptyStore(): CrmStore {
   return { leads: [] };
+}
+
+function hasBlobStorageConfig() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+async function loadBlobSdk(): Promise<BlobSdk | null> {
+  try {
+    const moduleName = "@vercel/blob";
+    const mod = (await import(moduleName)) as unknown as BlobSdk;
+    return mod;
+  } catch {
+    return null;
+  }
+}
+
+async function readStoreFromBlob(): Promise<CrmStore | null> {
+  if (!hasBlobStorageConfig()) {
+    return null;
+  }
+
+  const blob = await loadBlobSdk();
+  if (!blob) {
+    return null;
+  }
+
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const { blobs } = await blob.list({
+    prefix: blobStorePath,
+    token,
+    limit: 5
+  });
+
+  const exactBlob = blobs.find((item) => item.pathname === blobStorePath);
+  const latestBlob =
+    exactBlob ||
+    [...blobs].sort((a, b) => {
+      const aTs = new Date(a.uploadedAt || 0).getTime();
+      const bTs = new Date(b.uploadedAt || 0).getTime();
+      return bTs - aTs;
+    })[0];
+
+  if (!latestBlob?.url) {
+    return emptyStore();
+  }
+
+  const response = await fetch(latestBlob.url, {
+    cache: "no-store",
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`
+        }
+      : undefined
+  });
+
+  if (!response.ok) {
+    return emptyStore();
+  }
+
+  const parsed = (await response.json()) as CrmStore;
+  if (!parsed || !Array.isArray(parsed.leads)) {
+    return emptyStore();
+  }
+
+  return parsed;
+}
+
+async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
+  if (!hasBlobStorageConfig()) {
+    return false;
+  }
+
+  const blob = await loadBlobSdk();
+  if (!blob) {
+    return false;
+  }
+
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  await blob.put(blobStorePath, JSON.stringify(store, null, 2), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+    token
+  });
+
+  return true;
+}
+
+export async function getCrmStorageHealth(): Promise<CrmStorageHealth> {
+  const blobConfigured = hasBlobStorageConfig();
+  const blobSdkAvailable = Boolean(await loadBlobSdk());
+  const mode = blobConfigured && blobSdkAvailable ? "blob" : "file";
+
+  return {
+    mode,
+    blobConfigured,
+    blobSdkAvailable,
+    isVercelRuntime: Boolean(process.env.VERCEL),
+    blobPath: blobStorePath,
+    filePath: storePath
+  };
 }
 
 function toStringValue(value: unknown): string {
@@ -176,6 +313,11 @@ async function ensureDataDir() {
 }
 
 async function readStore(): Promise<CrmStore> {
+  const blobStore = await readStoreFromBlob();
+  if (blobStore) {
+    return blobStore;
+  }
+
   try {
     const raw = await fs.readFile(storePath, "utf8");
     const parsed = JSON.parse(raw) as CrmStore;
@@ -189,6 +331,11 @@ async function readStore(): Promise<CrmStore> {
 }
 
 async function writeStore(store: CrmStore) {
+  const blobWriteOk = await writeStoreToBlob(store);
+  if (blobWriteOk) {
+    return;
+  }
+
   await ensureDataDir();
   const tempPath = `${storePath}.tmp`;
   await fs.writeFile(tempPath, JSON.stringify(store, null, 2), "utf8");
@@ -571,12 +718,51 @@ export async function createLeadFromSubmission(body: Record<string, unknown>): P
 
 export async function updateCrmLead(
   leadId: string,
-  patch: CrmLeadUpdatePayload
+  patch: CrmLeadUpdatePayload,
+  options?: { createIfMissing?: boolean }
 ): Promise<CrmLead | null> {
   const store = await readStore();
   const leadIndex = store.leads.findIndex((lead) => lead.id === leadId);
 
   if (leadIndex < 0) {
+    if (options?.createIfMissing) {
+      const now = new Date().toISOString();
+      const createdLead: CrmLead = {
+        id: leadId,
+        createdAt: now,
+        updatedAt: now,
+        stage: patch.stage ? toStage(patch.stage, "new_lead") : "new_lead",
+        firstName: patch.firstName || "Unknown",
+        lastName: patch.lastName || "Lead",
+        email: patch.email || "unknown@example.com",
+        phone: patch.phone || "",
+        address: patch.address || "",
+        serviceDetails: patch.serviceDetails || "",
+        serviceAreaBucket: patch.serviceAreaBucket || "",
+        valueTierPrediction: patch.valueTierPrediction || "",
+        intentServiceType: patch.intentServiceType || "concrete_sealing",
+        tracking: {
+          lead_id: leadId
+        },
+        offline: {
+          ...defaultOfflineData(),
+          ...(patch.offline ?? {}),
+          quoteAmountCad: toNumberOrNull(patch.offline?.quoteAmountCad),
+          finalRevenueCad: toNumberOrNull(patch.offline?.finalRevenueCad),
+          jobCostCad: toNumberOrNull(patch.offline?.jobCostCad),
+          uploadReady: toBoolean(patch.offline?.uploadReady, false),
+          offlineConversionUploaded: toBoolean(
+            patch.offline?.offlineConversionUploaded,
+            false
+          )
+        }
+      };
+
+      store.leads.unshift(createdLead);
+      await writeStore(store);
+      return createdLead;
+    }
+
     return null;
   }
 

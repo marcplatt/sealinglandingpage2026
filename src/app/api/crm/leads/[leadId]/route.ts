@@ -14,7 +14,7 @@ export async function PATCH(
     }
 
     const body = (await request.json()) as CrmLeadUpdatePayload;
-    const lead = await updateCrmLead(leadId, body);
+    const lead = await updateCrmLead(leadId, body, { createIfMissing: true });
 
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
