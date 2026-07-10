@@ -199,6 +199,19 @@ function createLeadId() {
   return `lead_${crypto.randomUUID()}`;
 }
 
+function ensureUniqueLeadId(existingIds: Set<string>, preferredId?: string) {
+  const trimmedPreferred = (preferredId || "").trim();
+  if (trimmedPreferred && !existingIds.has(trimmedPreferred)) {
+    return trimmedPreferred;
+  }
+
+  let candidate = createLeadId();
+  while (existingIds.has(candidate)) {
+    candidate = createLeadId();
+  }
+  return candidate;
+}
+
 function escapeCsv(value: string) {
   if (/[,\n\r"]/g.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -528,7 +541,10 @@ export async function createLeadFromSubmission(body: Record<string, unknown>): P
     }
   }
 
-  const leadId = tracking.lead_id || createLeadId();
+  const store = await readStore();
+  const existingIds = new Set(store.leads.map((lead) => lead.id));
+  const leadId = ensureUniqueLeadId(existingIds, tracking.lead_id);
+  tracking.lead_id = tracking.lead_id || leadId;
 
   const lead: CrmLead = {
     id: leadId,
@@ -548,7 +564,6 @@ export async function createLeadFromSubmission(body: Record<string, unknown>): P
     offline: defaultOfflineData()
   };
 
-  const store = await readStore();
   store.leads.unshift(lead);
   await writeStore(store);
   return lead;
@@ -620,4 +635,17 @@ export async function updateCrmLead(
   store.leads[leadIndex] = updated;
   await writeStore(store);
   return updated;
+}
+
+export async function deleteCrmLead(leadId: string): Promise<boolean> {
+  const store = await readStore();
+  const leadIndex = store.leads.findIndex((lead) => lead.id === leadId);
+
+  if (leadIndex < 0) {
+    return false;
+  }
+
+  store.leads.splice(leadIndex, 1);
+  await writeStore(store);
+  return true;
 }

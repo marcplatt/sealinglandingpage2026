@@ -147,6 +147,7 @@ export function LeadForm({ tracking }: LeadFormProps) {
   const [status, setStatus] = useState<"idle" | "saving" | "success" | "error">(
     "idle"
   );
+  const [errorMessage, setErrorMessage] = useState("");
   const mountTimeRef = useRef(Date.now());
   const scrollDepthRef = useRef(0);
 
@@ -268,6 +269,7 @@ export function LeadForm({ tracking }: LeadFormProps) {
     const payload = Object.fromEntries(formData.entries());
 
     setStatus("saving");
+    setErrorMessage("");
 
     try {
       const response = await fetch("/api/lead", {
@@ -279,14 +281,26 @@ export function LeadForm({ tracking }: LeadFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Request failed");
+        const errorBody = (await response.json().catch(() => null)) as
+          | { error?: string; message?: string }
+          | null;
+        throw new Error(errorBody?.message || errorBody?.error || "Request failed");
       }
 
       setStatus("success");
+      setTrackingFields((current) => ({
+        ...current,
+        lead_id: createLeadId()
+      }));
       form.reset();
       router.push("/thank-you");
-    } catch {
+    } catch (error) {
       setStatus("error");
+      setErrorMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong while saving your lead"
+      );
     }
   }
 
@@ -337,7 +351,7 @@ export function LeadForm({ tracking }: LeadFormProps) {
       )}
       {status === "error" && (
         <p className="form-status error">
-          Something went wrong. Please call us and we will help right away.
+          {errorMessage || "Something went wrong. Please call us and we will help right away."}
         </p>
       )}
     </form>

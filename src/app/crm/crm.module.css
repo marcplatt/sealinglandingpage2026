@@ -255,6 +255,12 @@
   color: #55504a;
 }
 
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .statusOk {
   margin: 0;
   color: #176a2b;

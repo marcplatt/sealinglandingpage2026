@@ -74,11 +74,25 @@ function extractBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
 }
 
+async function readApiError(response: Response, fallback: string) {
+  try {
+    const body = (await response.json()) as { error?: string; message?: string };
+    return body.message || body.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
   const [leads, setLeads] = useState<CrmLead[]>(initialLeads);
   const [summary, setSummary] = useState(initialSummary);
   const [selectedLeadId, setSelectedLeadId] = useState<string>(initialLeads[0]?.id || "");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveErrorMessage, setSaveErrorMessage] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "deleting" | "deleted" | "error">(
+    "idle"
+  );
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -169,6 +183,10 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       return;
     }
 
+    setSaveErrorMessage("");
+    setDeleteStatus("idle");
+    setDeleteErrorMessage("");
+
     const formData = new FormData(event.currentTarget);
     const stage = String(formData.get("stage") || selectedLead.stage) as PipelineStage;
 
@@ -213,7 +231,8 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Update failed");
+        const message = await readApiError(response, "Unable to save lead changes");
+        throw new Error(message);
       }
 
       const result = (await response.json()) as { lead: CrmLead };
@@ -222,8 +241,59 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       );
       await refreshData();
       setSaveStatus("saved");
-    } catch {
+    } catch (error) {
       setSaveStatus("error");
+      setSaveErrorMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to save lead changes"
+      );
+    }
+  }
+
+  async function onDeleteLead() {
+    if (!selectedLead) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete lead ${selectedLead.firstName} ${selectedLead.lastName} (${selectedLead.id})?`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteStatus("deleting");
+    setDeleteErrorMessage("");
+    setSaveStatus("idle");
+    setSaveErrorMessage("");
+
+    try {
+      const response = await fetch(`/api/crm/leads/${selectedLead.id}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        const message = await readApiError(response, "Unable to delete lead");
+        throw new Error(message);
+      }
+
+      const deletedLeadId = selectedLead.id;
+      const remainingLeads = leads.filter((lead) => lead.id !== deletedLeadId);
+      const nextSelectedId =
+        remainingLeads.find((lead) => lead.id === selectedLeadId)?.id ||
+        remainingLeads[0]?.id ||
+        "";
+
+      setLeads(remainingLeads);
+      setSelectedLeadId(nextSelectedId);
+      await refreshData();
+      setDeleteStatus("deleted");
+    } catch (error) {
+      setDeleteStatus("error");
+      setDeleteErrorMessage(
+        error instanceof Error && error.message ? error.message : "Unable to delete lead"
+      );
     }
   }
 
@@ -511,13 +581,31 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
               </p>
             </div>
 
-            <button className="btn btn-solid" type="submit" disabled={saveStatus === "saving"}>
-              {saveStatus === "saving" ? "Saving..." : "Save Lead"}
-            </button>
+            <div className={styles.formActions}>
+              <button className="btn btn-solid" type="submit" disabled={saveStatus === "saving"}>
+                {saveStatus === "saving" ? "Saving..." : "Save Lead"}
+              </button>
+              <button
+                className="btn btn-outline"
+                type="button"
+                onClick={onDeleteLead}
+                disabled={deleteStatus === "deleting"}
+              >
+                {deleteStatus === "deleting" ? "Deleting..." : "Delete Lead"}
+              </button>
+            </div>
 
             {saveStatus === "saved" ? <p className={styles.statusOk}>Saved.</p> : null}
             {saveStatus === "error" ? (
-              <p className={styles.statusError}>Save failed. Try again.</p>
+              <p className={styles.statusError}>
+                Save failed. {saveErrorMessage || "Try again."}
+              </p>
+            ) : null}
+            {deleteStatus === "deleted" ? <p className={styles.statusOk}>Lead deleted.</p> : null}
+            {deleteStatus === "error" ? (
+              <p className={styles.statusError}>
+                Delete failed. {deleteErrorMessage || "Try again."}
+              </p>
             ) : null}
           </form>
         )}
