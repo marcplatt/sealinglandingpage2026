@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { landingPageConfigs } from "./landing/config";
 
 export default function HomePage() {
   return (
@@ -7,9 +8,11 @@ export default function HomePage() {
         <h1>Landing Pages</h1>
         <p>Open a route:</p>
         <ul>
-          <li>
-            <Link href="/concrete-sealing-cowichan">Concrete Sealing landing page</Link>
-          </li>
+          {landingPageConfigs.map((config) => (
+            <li key={config.slug}>
+              <Link href={`/${config.slug}`}>{config.routeLabel}</Link>
+            </li>
+          ))}
           <li>
             <Link href="/dashboard">Dashboard</Link>
           </li>
