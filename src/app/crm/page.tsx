@@ -41,8 +41,8 @@ export default async function CrmPage() {
             <p className={styles.kicker}>CRM Storage Alert</p>
             <h1>CRM data is temporarily unavailable</h1>
             <p className={styles.heroCopy}>
-              {loadError}. Check <a href="/api/crm/diagnostics">/api/crm/diagnostics</a> for
-              runtime health details.
+              {loadError}. Check <Link href="/api/crm/diagnostics">/api/crm/diagnostics</Link>{" "}
+              for runtime health details.
             </p>
           </div>
         </section>

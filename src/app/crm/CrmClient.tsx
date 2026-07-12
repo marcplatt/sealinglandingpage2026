@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 
 import {
   PIPELINE_STAGE_LABELS,
@@ -128,6 +136,16 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
   const [diagnosticsComment, setDiagnosticsComment] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const refreshRequestSeqRef = useRef(0);
+  const selectedLeadIdRef = useRef(selectedLeadId);
+  const leadsRef = useRef(leads);
+
+  useEffect(() => {
+    selectedLeadIdRef.current = selectedLeadId;
+  }, [selectedLeadId]);
+
+  useEffect(() => {
+    leadsRef.current = leads;
+  }, [leads]);
 
   const selectedLead = useMemo(
     () => leads.find((lead) => lead.id === selectedLeadId),
@@ -154,10 +172,10 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
     return `<!-- CRM_DIAGNOSTICS\n${JSON.stringify(payload, null, 2)}\n-->`;
   }
 
-  async function refreshData() {
+  const refreshData = useCallback(async () => {
     const requestSeq = ++refreshRequestSeqRef.current;
 
-    const selectedLeadIdForRequest = selectedLeadId;
+    const selectedLeadIdForRequest = selectedLeadIdRef.current;
 
     const [leadsResponse, summaryResponse, diagnosticsResponse] = await Promise.all([
       fetch("/api/crm/leads", { cache: "no-store" }),
@@ -208,7 +226,7 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       }));
     }
 
-    const effectiveLeads = latestLeads || leads;
+    const effectiveLeads = latestLeads || leadsRef.current;
     const nextSelectedLeadId =
       selectedLeadIdForRequest &&
       effectiveLeads.some((lead) => lead.id === selectedLeadIdForRequest)
@@ -232,11 +250,11 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
         apiDiagnostics: diagnosticsBody
       })
     );
-  }
+  }, []);
 
   useEffect(() => {
     void refreshData();
-  }, []);
+  }, [refreshData]);
 
   function onClickImport() {
     fileInputRef.current?.click();
