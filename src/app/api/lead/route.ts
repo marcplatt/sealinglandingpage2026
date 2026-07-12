@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "Lead submission failed",
-        message: "Unable to save lead data"
+        message:
+          error instanceof Error && error.message
+            ? error.message
+            : "Unable to save lead data"
       },
       { status: 500 }
     );

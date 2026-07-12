@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { list as blobList, put as blobPut } from "@vercel/blob";
 
 import {
   PIPELINE_STAGES,
@@ -41,25 +42,6 @@ type BlobListItem = {
   downloadUrl?: string;
   pathname: string;
   uploadedAt?: string | Date;
-};
-
-type BlobSdk = {
-  list: (options: {
-    prefix?: string;
-    token?: string;
-    limit?: number;
-  }) => Promise<{ blobs: BlobListItem[] }>;
-  put: (
-    pathname: string,
-    body: string,
-    options: {
-      access: "public" | "private";
-      addRandomSuffix?: boolean;
-      allowOverwrite?: boolean;
-      contentType?: string;
-      token?: string;
-    }
-  ) => Promise<unknown>;
 };
 
 const CSV_COLUMNS = [
@@ -268,12 +250,10 @@ async function readBlobStoreCandidate(
 }
 
 async function loadBlobSdk(): Promise<BlobSdk | null> {
-  try {
-    const mod = (await import("@vercel/blob")) as unknown as BlobSdk;
-    return mod;
-  } catch {
-    return null;
-  }
+  return {
+    list: blobList,
+    put: blobPut
+  };
 }
 
 async function readStoreFromBlob(options?: ReadStoreOptions): Promise<CrmStore | null> {
@@ -362,7 +342,7 @@ async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
 
 export async function getCrmStorageHealth(): Promise<CrmStorageHealth> {
   const blobConfigured = hasBlobStorageConfig();
-  const blobSdkAvailable = Boolean(await loadBlobSdk());
+  const blobSdkAvailable = true;
   const mode = blobConfigured && blobSdkAvailable ? "blob" : "file";
 
   return {
