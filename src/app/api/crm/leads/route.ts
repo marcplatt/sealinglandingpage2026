@@ -5,8 +5,19 @@ import { createLeadFromSubmission, getCrmLeads } from "../../../../server/crmSto
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const leads = await getCrmLeads();
-  return NextResponse.json({ leads });
+  try {
+    const leads = await getCrmLeads();
+    return NextResponse.json({ leads });
+  } catch (error) {
+    console.error("CRM leads read failed", error);
+    return NextResponse.json(
+      {
+        error: "CRM leads read failed",
+        message: error instanceof Error ? error.message : "Unable to load CRM leads"
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
