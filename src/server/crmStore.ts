@@ -167,24 +167,48 @@ function toUploadedAtMs(value: string | Date | undefined): number {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
+  function toIsoDateMs(value: string | undefined): number {
+    if (!value) {
+      return 0;
+    }
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
+  function dedupeLeads(leads: CrmLead[]): CrmLead[] {
+    const byId = new Map<string, CrmLead>();
+
+    for (const lead of leads) {
+      const existing = byId.get(lead.id);
+      if (!existing) {
+        byId.set(lead.id, lead);
+        continue;
+      }
+
+      const existingRank = Math.max(
+        toIsoDateMs(existing.updatedAt),
+        toIsoDateMs(existing.createdAt)
+      );
+      const nextRank = Math.max(toIsoDateMs(lead.updatedAt), toIsoDateMs(lead.createdAt));
+
+      if (nextRank >= existingRank) {
+        byId.set(lead.id, lead);
+      }
+    }
+
+    return [...byId.values()];
+  }
+
 function normalizeStore(store: CrmStore | null | undefined): CrmStore {
   if (!store || !Array.isArray(store.leads)) {
     return emptyStore();
   }
 
   return {
-    leads: store.leads,
+      leads: dedupeLeads(store.leads),
     revisionUpdatedAt: store.revisionUpdatedAt || "",
     revisionId: store.revisionId || ""
   };
-}
-
-function getStoreRevisionMs(store: CrmStore, fallback?: string | Date): number {
-  const revisionMs = toUploadedAtMs(store.revisionUpdatedAt);
-  if (revisionMs > 0) {
-    return revisionMs;
-  }
-  return toUploadedAtMs(fallback);
 }
 
 async function readBlobStoreCandidate(
@@ -281,28 +305,18 @@ async function readStoreFromBlob(options?: ReadStoreOptions): Promise<CrmStore |
     );
   }
 
-  let newestCandidate: { store: CrmStore; sourceUploadedAt?: string | Date } | null = null;
+    const newestBlobCandidate = blobCandidates[0];
+    const newestCandidate = await readBlobStoreCandidate(newestBlobCandidate, token);
 
-  for (const blobCandidate of blobCandidates) {
-    const candidate = await readBlobStoreCandidate(blobCandidate, token);
-    if (!candidate) {
-      continue;
-    }
-
-    if (
-      !newestCandidate ||
-      getStoreRevisionMs(candidate.store, candidate.sourceUploadedAt) >
-        getStoreRevisionMs(newestCandidate.store, newestCandidate.sourceUploadedAt)
-    ) {
-      newestCandidate = candidate;
-    }
+    if (newestCandidate) {
+      return newestCandidate.store;
   }
 
-  if (newestCandidate) {
-    return newestCandidate.store;
-  }
-
-  throw new Error(`CRM Blob read failed for ${blobStorePath}. No valid store snapshot found.`);
+    throw new Error(
+      `CRM Blob read failed for newest snapshot ${newestBlobCandidate.pathname} (${String(
+        newestBlobCandidate.uploadedAt || "unknown"
+      )}).`
+    );
 }
 
 async function writeStoreToBlob(store: CrmStore): Promise<boolean> {

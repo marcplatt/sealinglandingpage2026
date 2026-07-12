@@ -29,6 +29,37 @@ type CrmClientProps = {
   };
 };
 
+type CrmDiagnosticsPayload = {
+  generatedAt: string;
+  refreshSeq: number;
+  leadsRequestOk: boolean;
+  summaryRequestOk: boolean;
+  diagnosticsRequestOk: boolean;
+  clientLeadCount: number;
+  clientSummaryTotalLeads: number;
+  selectedLeadId: string;
+  selectedLeadPresent: boolean;
+  leadFingerprint: string;
+  apiDiagnostics?: {
+    generatedAt?: string;
+    leadCount?: number;
+    summaryTotalLeads?: number;
+    stageCounts?: Record<string, number>;
+    leadFingerprint?: string;
+    inspectLeadId?: string | null;
+    inspectLeadPresent?: boolean;
+    inspectLeadUpdatedAt?: string | null;
+    inspectLeadStage?: string | null;
+    health?: {
+      mode?: string;
+      blobConfigured?: boolean;
+      blobSdkAvailable?: boolean;
+      isVercelRuntime?: boolean;
+      blobPath?: string;
+    };
+  };
+};
+
 function formatCurrency(value: number | null) {
   if (value === null || Number.isNaN(value)) {
     return "-";
@@ -94,6 +125,7 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
   );
   const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
   const [importStatus, setImportStatus] = useState("");
+  const [diagnosticsComment, setDiagnosticsComment] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const refreshRequestSeqRef = useRef(0);
 
@@ -111,12 +143,29 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
     [leads]
   );
 
+  function buildLeadFingerprint(list: CrmLead[]) {
+    return list
+      .slice(0, 25)
+      .map((lead) => `${lead.id}:${lead.updatedAt || lead.createdAt}`)
+      .join("|");
+  }
+
+  function buildDiagnosticsComment(payload: CrmDiagnosticsPayload) {
+    return `<!-- CRM_DIAGNOSTICS\n${JSON.stringify(payload, null, 2)}\n-->`;
+  }
+
   async function refreshData() {
     const requestSeq = ++refreshRequestSeqRef.current;
 
-    const [leadsResponse, summaryResponse] = await Promise.all([
+    const selectedLeadIdForRequest = selectedLeadId;
+
+    const [leadsResponse, summaryResponse, diagnosticsResponse] = await Promise.all([
       fetch("/api/crm/leads", { cache: "no-store" }),
-      fetch("/api/crm/summary", { cache: "no-store" })
+      fetch("/api/crm/summary", { cache: "no-store" }),
+      fetch(
+        `/api/crm/diagnostics?leadId=${encodeURIComponent(selectedLeadIdForRequest)}`,
+        { cache: "no-store" }
+      )
     ]);
 
     if (requestSeq !== refreshRequestSeqRef.current) {
@@ -124,6 +173,7 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
     }
 
     let latestLeads: CrmLead[] | null = null;
+    let diagnosticsBody: CrmDiagnosticsPayload["apiDiagnostics"] | undefined;
 
     if (leadsResponse.ok) {
       const leadsResult = (await leadsResponse.json()) as { leads: CrmLead[] };
@@ -145,7 +195,10 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
         ...summaryResult.summary,
         totalLeads: latestLeads ? latestLeads.length : summaryResult.summary.totalLeads
       });
-      return;
+    }
+
+    if (diagnosticsResponse.ok) {
+      diagnosticsBody = (await diagnosticsResponse.json()) as CrmDiagnosticsPayload["apiDiagnostics"];
     }
 
     if (latestLeads) {
@@ -154,6 +207,31 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
         totalLeads: latestLeads.length
       }));
     }
+
+    const effectiveLeads = latestLeads || leads;
+    const nextSelectedLeadId =
+      selectedLeadIdForRequest &&
+      effectiveLeads.some((lead) => lead.id === selectedLeadIdForRequest)
+        ? selectedLeadIdForRequest
+        : effectiveLeads[0]?.id || "";
+
+    setDiagnosticsComment(
+      buildDiagnosticsComment({
+        generatedAt: new Date().toISOString(),
+        refreshSeq: requestSeq,
+        leadsRequestOk: leadsResponse.ok,
+        summaryRequestOk: summaryResponse.ok,
+        diagnosticsRequestOk: diagnosticsResponse.ok,
+        clientLeadCount: effectiveLeads.length,
+        clientSummaryTotalLeads: effectiveLeads.length,
+        selectedLeadId: nextSelectedLeadId,
+        selectedLeadPresent: Boolean(
+          nextSelectedLeadId && effectiveLeads.some((lead) => lead.id === nextSelectedLeadId)
+        ),
+        leadFingerprint: buildLeadFingerprint(effectiveLeads),
+        apiDiagnostics: diagnosticsBody
+      })
+    );
   }
 
   useEffect(() => {
@@ -634,6 +712,16 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
           </form>
         )}
       </aside>
+
+      <section className={styles.diagnosticsPane} aria-label="CRM diagnostics">
+        <h2>CRM Diagnostics</h2>
+        <p>
+          Copy this block after a bad refresh and send it back for analysis.
+        </p>
+        <pre className={styles.diagnosticsPre}>
+          {diagnosticsComment || "<!-- CRM_DIAGNOSTICS pending first refresh -->"}
+        </pre>
+      </section>
     </section>
   );
 }
