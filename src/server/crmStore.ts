@@ -13,6 +13,8 @@ import {
 
 type CrmStore = {
   leads: CrmLead[];
+  revisionUpdatedAt?: string;
+  revisionId?: string;
 };
 
 type CsvImportResult = {
@@ -151,6 +153,83 @@ function hasBlobStorageConfig() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function toUploadedAtMs(value: string | Date | undefined): number {
+  if (!value) {
+    return 0;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  const ms = date.getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+function normalizeStore(store: CrmStore | null | undefined): CrmStore {
+  if (!store || !Array.isArray(store.leads)) {
+    return emptyStore();
+  }
+
+  return {
+    leads: store.leads,
+    revisionUpdatedAt: store.revisionUpdatedAt || "",
+    revisionId: store.revisionId || ""
+  };
+}
+
+function getStoreRevisionMs(store: CrmStore, fallback?: string | Date): number {
+  const revisionMs = toUploadedAtMs(store.revisionUpdatedAt);
+  if (revisionMs > 0) {
+    return revisionMs;
+  }
+  return toUploadedAtMs(fallback);
+}
+
+async function readBlobStoreCandidate(
+  blobItem: BlobListItem,
+  token?: string
+): Promise<{ store: CrmStore; sourceUploadedAt?: string | Date } | null> {
+  const attempts: Array<{
+    url: string;
+    headers?: HeadersInit;
+  }> = [];
+
+  if (blobItem.downloadUrl) {
+    attempts.push({ url: blobItem.downloadUrl });
+  }
+
+  if (token) {
+    attempts.push({
+      url: blobItem.url,
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+  }
+
+  attempts.push({ url: blobItem.url });
+
+  for (const attempt of attempts) {
+    const response = await fetch(attempt.url, {
+      cache: "no-store",
+      headers: attempt.headers
+    });
+
+    if (!response.ok) {
+      continue;
+    }
+
+    const parsed = normalizeStore((await response.json()) as CrmStore);
+    if (!Array.isArray(parsed.leads)) {
+      continue;
+    }
+
+    return {
+      store: parsed,
+      sourceUploadedAt: blobItem.uploadedAt
+    };
+  }
+
+  return null;
+}
+
 async function loadBlobSdk(): Promise<BlobSdk | null> {
   try {
     const moduleName = "@vercel/blob";
@@ -175,75 +254,45 @@ async function readStoreFromBlob(): Promise<CrmStore | null> {
   const { blobs } = await blob.list({
     prefix: blobStorePath,
     token,
-    limit: 5
+    limit: 100
   });
 
-  const exactBlob = blobs.find((item) => item.pathname === blobStorePath);
-  const latestBlob =
-    exactBlob ||
-    [...blobs].sort((a, b) => {
-      const aTs = new Date(a.uploadedAt || 0).getTime();
-      const bTs = new Date(b.uploadedAt || 0).getTime();
-      return bTs - aTs;
-    })[0];
+  const exactBlobs = [...blobs]
+    .filter((item) => item.pathname === blobStorePath)
+    .sort((a, b) => toUploadedAtMs(b.uploadedAt) - toUploadedAtMs(a.uploadedAt));
 
-  if (!latestBlob?.url) {
+  const blobCandidates = exactBlobs.length > 0
+    ? exactBlobs.slice(0, 10)
+    : [...blobs]
+        .sort((a, b) => toUploadedAtMs(b.uploadedAt) - toUploadedAtMs(a.uploadedAt))
+        .slice(0, 10);
+
+  if (blobCandidates.length === 0) {
     return emptyStore();
   }
 
-  const attempts: Array<{
-    url: string;
-    headers?: HeadersInit;
-    label: string;
-  }> = [];
+  let newestCandidate: { store: CrmStore; sourceUploadedAt?: string | Date } | null = null;
 
-  if (latestBlob.downloadUrl) {
-    attempts.push({
-      url: latestBlob.downloadUrl,
-      label: "downloadUrl"
-    });
-  }
-
-  if (token) {
-    attempts.push({
-      url: latestBlob.url,
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      label: "url_with_bearer"
-    });
-  }
-
-  attempts.push({
-    url: latestBlob.url,
-    label: "url_no_auth"
-  });
-
-  let lastError = "";
-
-  for (const attempt of attempts) {
-    const response = await fetch(attempt.url, {
-      cache: "no-store",
-      headers: attempt.headers
-    });
-
-    if (!response.ok) {
-      lastError = `${attempt.label}:${response.status}`;
+  for (const blobCandidate of blobCandidates) {
+    const candidate = await readBlobStoreCandidate(blobCandidate, token);
+    if (!candidate) {
       continue;
     }
 
-    const parsed = (await response.json()) as CrmStore;
-    if (!parsed || !Array.isArray(parsed.leads)) {
-      lastError = `${attempt.label}:invalid_json_shape`;
-      continue;
+    if (
+      !newestCandidate ||
+      getStoreRevisionMs(candidate.store, candidate.sourceUploadedAt) >
+        getStoreRevisionMs(newestCandidate.store, newestCandidate.sourceUploadedAt)
+    ) {
+      newestCandidate = candidate;
     }
-
-    return parsed;
   }
 
-  throw new Error(
-    `CRM Blob read failed for ${blobStorePath}. Last error: ${lastError || "unknown"}`
-  );
+  if (newestCandidate) {
+    return newestCandidate.store;
+  }
+
+  throw new Error(`CRM Blob read failed for ${blobStorePath}. No valid store snapshot found.`);
 }
 
 async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
@@ -257,7 +306,13 @@ async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
   }
 
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  await blob.put(blobStorePath, JSON.stringify(store, null, 2), {
+  const nextStore: CrmStore = {
+    ...store,
+    revisionUpdatedAt: new Date().toISOString(),
+    revisionId: crypto.randomUUID()
+  };
+
+  await blob.put(blobStorePath, JSON.stringify(nextStore, null, 2), {
     access: "private",
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -350,16 +405,12 @@ async function ensureDataDir() {
 async function readStore(): Promise<CrmStore> {
   const blobStore = await readStoreFromBlob();
   if (blobStore) {
-    return blobStore;
+    return normalizeStore(blobStore);
   }
 
   try {
     const raw = await fs.readFile(storePath, "utf8");
-    const parsed = JSON.parse(raw) as CrmStore;
-    if (!parsed || !Array.isArray(parsed.leads)) {
-      return emptyStore();
-    }
-    return parsed;
+    return normalizeStore(JSON.parse(raw) as CrmStore);
   } catch {
     return emptyStore();
   }
