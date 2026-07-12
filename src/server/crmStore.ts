@@ -32,8 +32,9 @@ export type CrmStorageHealth = {
 
 type BlobListItem = {
   url: string;
+  downloadUrl?: string;
   pathname: string;
-  uploadedAt?: string;
+  uploadedAt?: string | Date;
 };
 
 type BlobSdk = {
@@ -190,25 +191,59 @@ async function readStoreFromBlob(): Promise<CrmStore | null> {
     return emptyStore();
   }
 
-  const response = await fetch(latestBlob.url, {
-    cache: "no-store",
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`
-        }
-      : undefined
+  const attempts: Array<{
+    url: string;
+    headers?: HeadersInit;
+    label: string;
+  }> = [];
+
+  if (latestBlob.downloadUrl) {
+    attempts.push({
+      url: latestBlob.downloadUrl,
+      label: "downloadUrl"
+    });
+  }
+
+  if (token) {
+    attempts.push({
+      url: latestBlob.url,
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      label: "url_with_bearer"
+    });
+  }
+
+  attempts.push({
+    url: latestBlob.url,
+    label: "url_no_auth"
   });
 
-  if (!response.ok) {
-    return emptyStore();
+  let lastError = "";
+
+  for (const attempt of attempts) {
+    const response = await fetch(attempt.url, {
+      cache: "no-store",
+      headers: attempt.headers
+    });
+
+    if (!response.ok) {
+      lastError = `${attempt.label}:${response.status}`;
+      continue;
+    }
+
+    const parsed = (await response.json()) as CrmStore;
+    if (!parsed || !Array.isArray(parsed.leads)) {
+      lastError = `${attempt.label}:invalid_json_shape`;
+      continue;
+    }
+
+    return parsed;
   }
 
-  const parsed = (await response.json()) as CrmStore;
-  if (!parsed || !Array.isArray(parsed.leads)) {
-    return emptyStore();
-  }
-
-  return parsed;
+  throw new Error(
+    `CRM Blob read failed for ${blobStorePath}. Last error: ${lastError || "unknown"}`
+  );
 }
 
 async function writeStoreToBlob(store: CrmStore): Promise<boolean> {

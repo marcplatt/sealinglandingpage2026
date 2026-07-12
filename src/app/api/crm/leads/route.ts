@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createLeadFromSubmission, getCrmLeads } from "../../../../server/crmStore";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const leads = await getCrmLeads();
   return NextResponse.json({ leads });

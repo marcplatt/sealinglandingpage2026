@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { exportCrmLeadsCsv } from "../../../../server/crmStore";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const csv = await exportCrmLeadsCsv();
 

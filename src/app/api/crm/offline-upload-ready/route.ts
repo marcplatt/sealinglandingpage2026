@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getOfflineUploadReadyLeads } from "../../../../server/crmStore";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const leads = await getOfflineUploadReadyLeads();
   const rows = leads.map((lead) => ({
