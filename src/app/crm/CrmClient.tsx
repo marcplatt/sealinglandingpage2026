@@ -95,6 +95,7 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
   const [deleteErrorMessage, setDeleteErrorMessage] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const refreshRequestSeqRef = useRef(0);
 
   const selectedLead = useMemo(
     () => leads.find((lead) => lead.id === selectedLeadId),
@@ -111,24 +112,47 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
   );
 
   async function refreshData() {
+    const requestSeq = ++refreshRequestSeqRef.current;
+
     const [leadsResponse, summaryResponse] = await Promise.all([
       fetch("/api/crm/leads", { cache: "no-store" }),
       fetch("/api/crm/summary", { cache: "no-store" })
     ]);
 
+    if (requestSeq !== refreshRequestSeqRef.current) {
+      return;
+    }
+
+    let latestLeads: CrmLead[] | null = null;
+
     if (leadsResponse.ok) {
       const leadsResult = (await leadsResponse.json()) as { leads: CrmLead[] };
-      setLeads(leadsResult.leads);
-      if (!selectedLeadId && leadsResult.leads[0]?.id) {
-        setSelectedLeadId(leadsResult.leads[0].id);
-      }
+      latestLeads = leadsResult.leads;
+      setLeads(latestLeads);
+      setSelectedLeadId((currentSelectedLeadId) => {
+        if (currentSelectedLeadId && latestLeads?.some((lead) => lead.id === currentSelectedLeadId)) {
+          return currentSelectedLeadId;
+        }
+        return latestLeads?.[0]?.id || "";
+      });
     }
 
     if (summaryResponse.ok) {
       const summaryResult = (await summaryResponse.json()) as {
         summary: CrmClientProps["initialSummary"];
       };
-      setSummary(summaryResult.summary);
+      setSummary({
+        ...summaryResult.summary,
+        totalLeads: latestLeads ? latestLeads.length : summaryResult.summary.totalLeads
+      });
+      return;
+    }
+
+    if (latestLeads) {
+      setSummary((current) => ({
+        ...current,
+        totalLeads: latestLeads.length
+      }));
     }
   }
 
@@ -302,7 +326,7 @@ export function CrmClient({ initialLeads, initialSummary }: CrmClientProps) {
       <div className={styles.kpiStrip}>
         <article className={styles.kpiCard}>
           <p>Total Leads</p>
-          <strong>{summary.totalLeads}</strong>
+          <strong>{leads.length}</strong>
         </article>
         <article className={styles.kpiCard}>
           <p>Won Leads</p>
