@@ -158,6 +158,14 @@ function hasBlobStorageConfig() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function isVercelRuntime() {
+  return Boolean(process.env.VERCEL);
+}
+
+function requiresBlobStorage() {
+  return isVercelRuntime() && hasBlobStorageConfig();
+}
+
 function toUploadedAtMs(value: string | Date | undefined): number {
   if (!value) {
     return 0;
@@ -261,8 +269,7 @@ async function readBlobStoreCandidate(
 
 async function loadBlobSdk(): Promise<BlobSdk | null> {
   try {
-    const moduleName = "@vercel/blob";
-    const mod = (await import(moduleName)) as unknown as BlobSdk;
+    const mod = (await import("@vercel/blob")) as unknown as BlobSdk;
     return mod;
   } catch {
     return null;
@@ -276,6 +283,9 @@ async function readStoreFromBlob(options?: ReadStoreOptions): Promise<CrmStore |
 
   const blob = await loadBlobSdk();
   if (!blob) {
+    if (requiresBlobStorage()) {
+      throw new Error("CRM Blob SDK unavailable in Vercel runtime");
+    }
     return null;
   }
 
@@ -326,6 +336,9 @@ async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
 
   const blob = await loadBlobSdk();
   if (!blob) {
+    if (requiresBlobStorage()) {
+      throw new Error("CRM Blob SDK unavailable in Vercel runtime");
+    }
     return false;
   }
 
@@ -356,7 +369,7 @@ export async function getCrmStorageHealth(): Promise<CrmStorageHealth> {
     mode,
     blobConfigured,
     blobSdkAvailable,
-    isVercelRuntime: Boolean(process.env.VERCEL),
+    isVercelRuntime: isVercelRuntime(),
     blobPath: blobStorePath,
     filePath: storePath
   };
@@ -444,6 +457,12 @@ async function writeStore(store: CrmStore) {
   const blobWriteOk = await writeStoreToBlob(store);
   if (blobWriteOk) {
     return;
+  }
+
+  if (requiresBlobStorage()) {
+    throw new Error(
+      "CRM Blob write is required in Vercel runtime but Blob storage is unavailable"
+    );
   }
 
   await ensureDataDir();
