@@ -17,6 +17,10 @@ type CrmStore = {
   revisionId?: string;
 };
 
+type ReadStoreOptions = {
+  allowBlobInit?: boolean;
+};
+
 type CsvImportResult = {
   imported: number;
   updated: number;
@@ -107,6 +111,7 @@ const dataDir = process.env.CRM_DATA_DIR
     : path.join(process.cwd(), "data");
 const storePath = path.join(dataDir, "crm-leads.json");
 const blobStorePath = process.env.CRM_BLOB_PATH || "crm/crm-leads.json";
+const allowBlobInitByEnv = process.env.CRM_ALLOW_BLOB_INIT === "true";
 
 const TRACKING_FIELDS: Array<keyof TrackingPayload> = [
   "gclid",
@@ -240,7 +245,7 @@ async function loadBlobSdk(): Promise<BlobSdk | null> {
   }
 }
 
-async function readStoreFromBlob(): Promise<CrmStore | null> {
+async function readStoreFromBlob(options?: ReadStoreOptions): Promise<CrmStore | null> {
   if (!hasBlobStorageConfig()) {
     return null;
   }
@@ -268,7 +273,12 @@ async function readStoreFromBlob(): Promise<CrmStore | null> {
         .slice(0, 10);
 
   if (blobCandidates.length === 0) {
-    return emptyStore();
+    if (options?.allowBlobInit || allowBlobInitByEnv) {
+      return emptyStore();
+    }
+    throw new Error(
+      `CRM Blob store is empty for ${blobStorePath}. Refusing to treat as empty CRM without explicit init.`
+    );
   }
 
   let newestCandidate: { store: CrmStore; sourceUploadedAt?: string | Date } | null = null;
@@ -402,8 +412,8 @@ async function ensureDataDir() {
   await fs.mkdir(dataDir, { recursive: true });
 }
 
-async function readStore(): Promise<CrmStore> {
-  const blobStore = await readStoreFromBlob();
+async function readStore(options?: ReadStoreOptions): Promise<CrmStore> {
+  const blobStore = await readStoreFromBlob(options);
   if (blobStore) {
     return normalizeStore(blobStore);
   }
@@ -570,7 +580,7 @@ export async function exportCrmLeadsCsv(): Promise<string> {
 
 export async function importCrmLeadsCsv(csvText: string): Promise<CsvImportResult> {
   const records = parseCsv(csvText);
-  const store = await readStore();
+  const store = await readStore({ allowBlobInit: true });
   let imported = 0;
   let updated = 0;
   let skipped = 0;
@@ -774,7 +784,7 @@ export async function createLeadFromSubmission(body: Record<string, unknown>): P
     }
   }
 
-  const store = await readStore();
+  const store = await readStore({ allowBlobInit: true });
   const existingIds = new Set(store.leads.map((lead) => lead.id));
   const leadId = ensureUniqueLeadId(existingIds, tracking.lead_id);
   tracking.lead_id = tracking.lead_id || leadId;
