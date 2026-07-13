@@ -351,7 +351,7 @@ async function writeStoreToBlob(store: CrmStore): Promise<boolean> {
   };
 
   await blob.put(blobStorePath, JSON.stringify(nextStore, null, 2), {
-    access: "private",
+    access: "public",
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
