@@ -44,6 +44,25 @@ type BlobListItem = {
   uploadedAt?: string | Date;
 };
 
+type BlobSdk = {
+  list: (options: {
+    prefix?: string;
+    token?: string;
+    limit?: number;
+  }) => Promise<{ blobs: BlobListItem[] }>;
+  put: (
+    pathname: string,
+    body: string,
+    options: {
+      access: "public" | "private";
+      addRandomSuffix?: boolean;
+      allowOverwrite?: boolean;
+      contentType?: string;
+      token?: string;
+    }
+  ) => Promise<unknown>;
+};
+
 const CSV_COLUMNS = [
   "id",
   "createdAt",
