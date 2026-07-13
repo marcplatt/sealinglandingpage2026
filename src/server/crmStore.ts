@@ -269,9 +269,11 @@ async function readBlobStoreCandidate(
 }
 
 async function loadBlobSdk(): Promise<BlobSdk | null> {
+  const typedPut = blobPut as unknown as BlobSdk["put"];
+
   return {
     list: blobList,
-    put: blobPut
+    put: typedPut
   };
 }
 
