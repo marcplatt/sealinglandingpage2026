@@ -1,6 +1,8 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import Image from "next/image";
 
+import { TrackedPhoneLink } from "../../components/TrackedPhoneLink";
+
 type SectionProps = ComponentPropsWithoutRef<"section"> & {
   children: ReactNode;
 };
@@ -46,9 +48,9 @@ export function LandingTopBar({
           <a className="btn btn-outline" href="#quote-form">
             Jump to Quote Form
           </a>
-          <a className="btn btn-solid" href={phoneHref}>
+          <TrackedPhoneLink className="btn btn-solid" href={phoneHref}>
             Call {phoneDisplay}
-          </a>
+          </TrackedPhoneLink>
         </div>
       </div>
     </header>

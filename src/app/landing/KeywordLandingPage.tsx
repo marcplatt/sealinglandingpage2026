@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { marketingVideos, processStripVideoIds } from "../../content/media";
+import { TrackedPhoneLink } from "../../components/TrackedPhoneLink";
 import { LeadForm } from "../concrete-sealing-cowichan/LeadForm";
 import {
   LandingPanel,
@@ -119,9 +120,9 @@ export async function KeywordLandingPage({
             <h1>{config.heroTitle}</h1>
             <p className="subhead">{config.heroSubhead}</p>
             <div className="cta-row">
-              <a className="btn btn-solid" href={phoneHref}>
+              <TrackedPhoneLink className="btn btn-solid" href={phoneHref}>
                 Call {phoneDisplay}
-              </a>
+              </TrackedPhoneLink>
               <a className="btn btn-outline" href="#quote-form">
                 Jump to Quote Form
               </a>
@@ -321,7 +322,7 @@ export async function KeywordLandingPage({
         <LandingPanel className="form-panel">
           <h2>{config.quoteHeading}</h2>
           <p>
-            Fill out the form and we will contact you with a free estimate. Need a quick answer? Call <a href={phoneHref}>{phoneDisplay}</a>.
+            Fill out the form and we will contact you with a free estimate. Need a quick answer? Call <TrackedPhoneLink href={phoneHref}>{phoneDisplay}</TrackedPhoneLink>.
           </p>
           <LeadForm tracking={tracking} />
         </LandingPanel>
@@ -333,15 +334,15 @@ export async function KeywordLandingPage({
             <Image src={media.logo} alt="Rocket Wash logo" width={120} height={36} />
             <p>Rocket Wash | Cowichan Valley</p>
           </div>
-          <a className="btn btn-outline" href={phoneHref}>
+          <TrackedPhoneLink className="btn btn-outline" href={phoneHref}>
             Call {phoneDisplay}
-          </a>
+          </TrackedPhoneLink>
         </div>
       </footer>
 
-      <a className="sticky-call" href={phoneHref}>
+      <TrackedPhoneLink className="sticky-call" href={phoneHref}>
         Tap to Call {phoneDisplay}
-      </a>
+      </TrackedPhoneLink>
     </main>
   );
 }

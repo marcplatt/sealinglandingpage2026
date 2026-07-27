@@ -2,10 +2,17 @@
 
 import { useEffect } from 'react'
 
-import { trackConversion } from '../../lib/analytics'
+import {
+  hasTrackedConversionThisSession,
+  trackConversion,
+} from '../../lib/analytics'
 
 export function ConversionPing() {
   useEffect(() => {
+    if (hasTrackedConversionThisSession()) {
+      return
+    }
+
     trackConversion()
   }, [])
 

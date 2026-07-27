@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TrackingPayload } from "../../types/crm";
+import { trackConversion } from "../../lib/analytics";
 
 type Tracking = Partial<TrackingPayload>;
 
@@ -293,7 +294,27 @@ export function LeadForm({ tracking }: LeadFormProps) {
         lead_id: createLeadId()
       }));
       form.reset();
-      router.push("/thank-you");
+
+      let hasNavigated = false;
+      const navigateToThankYou = () => {
+        if (hasNavigated) {
+          return;
+        }
+        hasNavigated = true;
+        router.push("/thank-you");
+      };
+
+      const conversionTriggered = trackConversion({
+        eventCallback: navigateToThankYou,
+        eventTimeoutMs: 1200
+      });
+
+      if (!conversionTriggered) {
+        navigateToThankYou();
+        return;
+      }
+
+      window.setTimeout(navigateToThankYou, 1300);
     } catch (error) {
       setStatus("error");
       setErrorMessage(
